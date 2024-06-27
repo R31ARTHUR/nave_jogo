@@ -126,6 +126,27 @@ class EnemyProjectile(pygame.sprite.Sprite):
         if self.rect.top > screen_height:
             self.kill()
 
+# Classe do power-up
+class PowerUp(pygame.sprite.Sprite):
+    def __init__(self, type):
+        super().__init__()
+        self.type = type
+        self.image = pygame.Surface((30, 30))
+        if self.type == "health":
+            self.image.fill(GREEN)
+        elif self.type == "shield":
+            self.image.fill(CYAN)
+        self.rect = self.image.get_rect()
+        self.rect.x = random.randint(0, screen_width - self.rect.width)
+        self.rect.y = random.randint(-1000, -500)
+        self.speed = random.randint(1, 3)
+
+    def update(self):
+        self.rect.y += self.speed
+        if self.rect.top > screen_height:
+            self.rect.x = random.randint(0, screen_width - self.rect.width)
+            self.rect.y = random.randint(-1000, -500)
+
 # Instância do jogador
 player = Player()
 
@@ -134,6 +155,7 @@ all_sprites = pygame.sprite.Group()
 enemies = pygame.sprite.Group()
 projectiles = pygame.sprite.Group()
 enemy_projectiles = pygame.sprite.Group()
+power_ups = pygame.sprite.Group()
 
 all_sprites.add(player)
 
@@ -145,6 +167,21 @@ for i in range(5):
 
 # Pontuação
 score = 0
+
+# Função para aumentar a dificuldade
+def increase_difficulty():
+    global score
+    if score % 50 == 0:
+        enemy = Enemy()
+        all_sprites.add(enemy)
+        enemies.add(enemy)
+
+# Função para criar power-ups
+def create_power_up():
+    power_up_types = ["health", "shield"]
+    power_up = PowerUp(random.choice(power_up_types))
+    all_sprites.add(power_up)
+    power_ups.add(power_up)
 
 # Loop principal do jogo
 def main():
@@ -176,16 +213,33 @@ def main():
                     new_enemy = Enemy()
                     all_sprites.add(new_enemy)
                     enemies.add(new_enemy)
+                increase_difficulty()
 
         # Verificar colisões entre projéteis dos inimigos e o jogador
-        if pygame.sprite.spritecollideany(player, enemy_projectiles):
-            player.health -= 1  # Exemplo de dano simples
-            for projectile in pygame.sprite.spritecollide(player, enemy_projectiles, True):
-                projectile.kill()
+        for projectile in pygame.sprite.spritecollide(player, enemy_projectiles, True):
+            if player.shield > 0:
+                player.shield -= 10
+            else:
+                player.health -= 10
+            projectile.kill()
 
         # Verificar colisões entre jogador e inimigos
-        if pygame.sprite.spritecollideany(player, enemies):
-            player.health -= 1  # Exemplo de dano simples
+        for enemy in pygame.sprite.spritecollide(player, enemies, True):
+            if player.shield > 0:
+                player.shield -= 20
+            else:
+                player.health -= 20
+
+        # Verificar colisões entre jogador e power-ups
+        for power_up in pygame.sprite.spritecollide(player, power_ups, True):
+            if power_up.type == "health":
+                player.health = min(player.health + 20, player.max_health)
+            elif power_up.type == "shield":
+                player.shield = min(player.shield + 20, player.max_shield)
+
+        # Criar power-ups aleatoriamente
+        if random.random() < 0.01:
+            create_power_up()
 
         # Renderização
         screen.fill(WHITE)
